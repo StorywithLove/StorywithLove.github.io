@@ -32,3 +32,22 @@ test("production bundle contains the OCI primary and Solar Centre fallback", asy
   assert.match(bundle, /the-power-of-far-flung-arrays-yularas-dispersed-design-to-reduce-system-variability\.pdf/);
   assert.match(bundle, /dkasolarcentre\.com\.au\/source\/yulara\/yulara-1-fixed/);
 });
+
+test("production build includes the controlled photovoltaic agent", async () => {
+  const assets = await import("node:fs/promises").then(({ readdir }) =>
+    readdir(new URL("../dist/assets/", import.meta.url)),
+  );
+  const javascript = assets.filter((name) => name.endsWith(".js"));
+  assert.ok(javascript.some((name) => name.startsWith("AgentPanel-")));
+  const bundle = (
+    await Promise.all(
+      javascript.map((name) => readFile(new URL(`../dist/assets/${name}`, import.meta.url), "utf8")),
+    )
+  ).join("\n");
+  assert.match(bundle, /光伏数据分析助手/);
+  assert.match(bundle, /确定性本地分析/);
+  assert.match(bundle, /check_data_quality/);
+  assert.match(bundle, /预测结果尚未接入/);
+  assert.match(bundle, /api\.xn--fhq9f80kj05g\.com\/api\/v1\/agent/);
+  assert.doesNotMatch(bundle, /sk-[A-Za-z0-9_-]{20,}|BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY/);
+});

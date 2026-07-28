@@ -91,6 +91,35 @@ assert(
 );
 console.log("Preflight: GET allowed");
 
+const agentPreflight = await request("/agent/query", {
+  method: "OPTIONS",
+  headers: {
+    Origin: productionOrigin,
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "content-type",
+  },
+});
+assert(
+  agentPreflight.response.ok,
+  `Agent preflight returned HTTP ${agentPreflight.response.status}`,
+);
+assert(
+  agentPreflight.response.headers.get("access-control-allow-methods")?.includes("POST"),
+  "Agent preflight did not allow POST",
+);
+console.log("Agent preflight: POST allowed");
+
+const invalidAgent = await request("/agent/query", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message: "", context: {} }),
+});
+assert(
+  invalidAgent.response.status === 422,
+  `invalid Agent request was not rejected with HTTP 422 (received ${invalidAgent.response.status})`,
+);
+console.log("Agent validation guard: invalid request rejected with HTTP 422");
+
 const invalid = await request("/power/history");
 assert(invalid.response.status >= 400 && invalid.response.status < 500, "missing history parameters were not rejected");
 console.log(`Validation guard: missing parameters rejected with HTTP ${invalid.response.status}`);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -27,6 +27,7 @@ import {
   powerApiHostnames,
 } from "./services/dataAdapter";
 import { fetchYularaWeather } from "./services/weatherAdapter";
+import type { AgentAction, AgentContext } from "./agent/types";
 import type {
   LoadState,
   PowerPoint,
@@ -42,6 +43,9 @@ const ARENA_CURTAILMENT_REPORT_URL =
   "https://www.arena.gov.au/assets/2018/12/the-power-of-far-flung-arrays-yularas-dispersed-design-to-reduce-system-variability.pdf";
 const DESERT_GARDENS_SOURCE_URL =
   "https://dkasolarcentre.com.au/source/yulara/yulara-1-fixed";
+const AgentPanel = lazy(() =>
+  import("./components/AgentPanel").then((module) => ({ default: module.AgentPanel })),
+);
 const dateTimeDarwin = new Intl.DateTimeFormat("zh-CN", {
   timeZone: DARWIN_TZ,
   year: "numeric",
@@ -191,6 +195,7 @@ function App() {
   const [rangeError, setRangeError] = useState("");
   const [showUtc, setShowUtc] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [agentHighlight, setAgentHighlight] = useState<{ start: string; end: string } | null>(null);
   const sites = siteCatalog?.sites ?? SITES;
   const siteById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites]);
   const totalCapacityKw = siteCatalog?.totalCapacityKw ?? sites.reduce(
@@ -347,6 +352,40 @@ function App() {
     link.download = `yulara-power-${startDate}-${endDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const agentContext = useMemo<AgentContext>(() => ({
+    site_id: selectedSiteId,
+    site_name: siteById.get(selectedSiteId)?.name ?? `site_id ${selectedSiteId}`,
+    start_time: startDate,
+    end_time: endDate,
+    timezone: DARWIN_TZ,
+    page: "history",
+    selected_metric: "power_kw",
+    selected_site_ids: [...selectedHistorySites],
+    data_source: history?.source ?? power?.source ?? "暂未连接",
+    sites,
+    points: history?.points ?? [],
+    weather,
+    systemStatus: apiStatus,
+  }), [
+    apiStatus,
+    endDate,
+    history,
+    power?.source,
+    selectedHistorySites,
+    selectedSiteId,
+    siteById,
+    sites,
+    startDate,
+    weather,
+  ]);
+
+  const handleAgentAction = (action: AgentAction) => {
+    if (action.type === "highlight_time_range" && action.start_time && action.end_time) {
+      setAgentHighlight({ start: action.start_time, end: action.end_time });
+    }
+    document.getElementById("history")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -559,7 +598,13 @@ function App() {
             {historyState === "error" ? (
               <div className="chart-empty" role="alert"><strong>历史数据暂时无法读取</strong><span>已保留当前页面上的最后一次实时数据；请缩短范围后重试。</span></div>
             ) : (
-              <HistoryChart sites={sites} points={history?.points ?? []} selectedSiteIds={selectedHistorySites} focusedSiteId={selectedSiteId} />
+              <HistoryChart
+                sites={sites}
+                points={history?.points ?? []}
+                selectedSiteIds={selectedHistorySites}
+                focusedSiteId={selectedSiteId}
+                highlightedRange={agentHighlight}
+              />
             )}
           </div>
           <aside className="curtailment-note history-curtailment-note" aria-label="Desert Gardens 历史曲线解读">
@@ -625,7 +670,7 @@ function App() {
             <article className="is-current"><span>NOW · 001</span><h3>澳大利亚 Yulara</h3><p>真实功率采集、站点地图、模型天气、历史回看与数据质量。</p><b><CheckCircle2 size={16} /> 第一版运行中</b></article>
             <article><span>NEXT · 002</span><h3>欧洲光伏项目</h3><p>沿用同一项目档案结构，扩展国家、区域与站点层级。</p><b>规划中</b></article>
             <article><span>MODEL · 003</span><h3>光伏功率预测</h3><p>天气融合、基线模型、误差诊断与可复现实验记录。</p><b>规划中</b></article>
-            <article><span>AGENT · 004</span><h3>AI Agent 工作流</h3><p>数据质量巡检、异常解释与受控的能源数据协作流程。</p><b>规划中</b></article>
+            <article><span>AGENT · 004</span><h3>AI Agent 工作流</h3><p>数据质量巡检、异常候选、站点对比与受控的能源数据协作流程。</p><b><CheckCircle2 size={16} /> 第一版已接入</b></article>
           </div>
         </section>
       </main>
@@ -635,6 +680,9 @@ function App() {
         <div><p>POWER · OCI read-only API / DKA Solar Centre fallback</p><p>WEATHER · Open‑Meteo model grid</p><p>MAP · OpenStreetMap / Esri imagery</p></div>
         <div><p>站点时间 · Australia/Darwin (ACST, UTC+09:30)</p><p>浏览器公开请求 · {powerApiHostnames().join(" · ")} · api.open-meteo.com</p><p>页面最后获取 · {power?.fetchedAt ? dateTimeDarwin.format(new Date(power.fetchedAt)) : "尚未成功"}</p></div>
       </footer>
+      <Suspense fallback={null}>
+        <AgentPanel context={agentContext} onAction={handleAgentAction} />
+      </Suspense>
     </div>
   );
 }

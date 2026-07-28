@@ -17,6 +17,8 @@
 - 最长单次 30 天历史查询；OCI 单次读取，降级公共源在适配层内自动拆成最多三天的分段请求
 - 多站曲线、时间缩放、数据点提示和真实数据 CSV 下载
 - 数据完整率、缺失点、负值和条件式今日发电量派生指标
+- 延迟加载的光伏数据分析助手：页面上下文、确定性质量诊断、异常候选、站点对比与结构化证据
+- OCI 服务端 Agent API：确定性分析加 DeepSeek 解释，浏览器不保存模型密钥
 - 响应式布局、触摸与键盘操作、清晰焦点样式和减少动态效果支持
 
 没有使用 Demo 功率或 Demo 天气。接口失败时页面显示明确的不可用或缓存状态，不会伪造数据。
@@ -86,12 +88,14 @@ npm run security:check
 
 ```text
 src/
+  agent/            Agent 上下文、白名单分析工具与可选服务端 API 客户端
   components/       地图与历史曲线组件
   data/             可公开站点元数据
   services/         功率与天气数据适配器、超时和重试
   App.tsx            页面信息架构与交互状态
   styles.css         视觉系统和响应式布局
 docs/
+  agent-api-contract.md  可选服务端 Agent 接口与安全边界
   oci-api-contract.md 未来只读 API 契约
 scripts/
   security-check.mjs 公开仓库安全扫描
@@ -113,6 +117,10 @@ tests/               生产构建检查
 - `tile.openstreetmap.org`：普通地图图块
 - `server.arcgisonline.com`：Esri World Imagery 图块
 
+浏览器会向 `VITE_PUBLIC_AGENT_API_BASE` 指向的 OCI HTTPS Agent 网关发送
+站点、时间范围和指标上下文。这个地址不是模型服务本身，浏览器不携带模型
+API Key；Provider 凭据由 OCI 服务端保存。
+
 官方项目页和来源说明链接还会指向 `dkasolarcentre.com.au`、`open-meteo.com`、`openstreetmap.org` 和 `github.com`，但只有用户点击链接时才会导航。
 
 这些公开地址必须出现在浏览器中才能发起 HTTPS 请求；地址本身不是凭据。任何私密数据库或后端身份都不得进入前端。
@@ -125,6 +133,8 @@ tests/               生产构建检查
 - 错误界面只提供用户可理解的状态，不显示内部异常堆栈
 - CSV 只能导出本次从真实功率接口读取的数据
 - 地图图层不需要前端私密 Key，并保留必要版权署名
+- 本地分析只执行代码中注册的确定性工具，不执行用户提供的 SQL、Shell、Python 或 JavaScript
+- 自由问答发送到 OCI Agent API；接口失败不会阻塞现有数据页面
 
 ## OCI 只读 API
 
@@ -136,6 +146,16 @@ tests/               生产构建检查
 - `GET /api/v1/status`
 
 前端只依赖公开响应字段，不依赖数据库表名、服务器内部路径或部署方式。接口字段和降级逻辑见 [OCI API 契约](docs/oci-api-contract.md)。
+
+## 光伏数据分析助手
+
+页面右下角的分析助手会自动携带当前站点、所选日期、时区、指标、数据源和已加载
+功率序列。质量诊断、运行摘要、异常候选和站点对比由确定性工具计算，输出明确区分
+数据证据、分析发现、推断和未知因素。天气目前只有实时附近网格快照，因此不会伪造
+历史相关性；预测结果尚未接入，也不会生成虚构评估。
+
+自然语言解释已经通过 [Agent API 契约](docs/agent-api-contract.md) 接入 OCI。
+模型 Provider、白名单工具执行和安全校验均留在服务端。
 
 ## 免责声明
 

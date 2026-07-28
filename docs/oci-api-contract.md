@@ -18,7 +18,7 @@ https://api.xn--fhq9f80kj05g.com/api/v1
 
 ## 通用约定
 
-- 仅使用 `GET` 和浏览器 CORS `OPTIONS` 预检
+- 功率与状态接口使用 `GET`；Agent 精确路径使用 `POST`；支持浏览器 CORS `OPTIONS` 预检
 - JSON / UTF-8；功率和容量单位为 `kW`
 - API 时间为 RFC 3339 / ISO 8601；站点日历采用 `Australia/Darwin`（ACST，UTC+09:30）
 - 历史 `start` 为包含端，`end` 为不包含端
@@ -56,9 +56,28 @@ OCI 历史请求失败时，适配层将同一日期范围切换到 Solar Centre
 
 状态词：`fresh`、`delayed`、`stale`、`partial`、`degraded`、`unavailable`。这些词会映射成中文状态，同时通过文字和状态点共同表达，不只依赖颜色。
 
+## `POST /agent/query`
+
+Agent 接口接收最长 500 字符的问题，以及当前站点、日期范围、时区、指标和所选
+站点列表。服务端重新查询只读归档，执行确定性质量、摘要、异常或站点对比分析，
+再由服务端 DeepSeek Provider 解释紧凑分析结果。
+
+请求路径：
+
+```text
+POST https://api.xn--fhq9f80kj05g.com/api/v1/agent/query
+```
+
+时间范围最多 30 天；站点 ID 必须属于公开的五个 Yulara 站点。响应保留
+`summary`、`evidence`、`findings`、`inferences`、`unknowns` 和 `actions`
+结构。模型失败时返回确定性分析，不伪造模型结果。DeepSeek Key 和数据库凭据只
+存在于 OCI 服务端。
+
 ## CORS 与缓存
 
-生产 Origin 为 `https://storywithlove.github.io`。接口应允许 `GET`、`OPTIONS` 和必要的标准内容请求头。前端不使用固定私密 API Key。
+生产 Origin 为 `https://storywithlove.github.io`。接口允许 `GET`、Agent
+精确路径的 `POST`、`OPTIONS` 和必要的标准内容请求头。前端不使用固定私密
+API Key。
 
 浏览器仅在设备本地缓存最后一次成功的公开实时功率数据。历史查询不会覆盖实时缓存，也不会导出模拟数据。
 

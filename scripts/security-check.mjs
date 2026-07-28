@@ -42,6 +42,7 @@ const browserFiles = [
   "src/services/powerAdapter.ts",
   "src/services/weatherAdapter.ts",
   "src/components/SiteMap.tsx",
+  "src/agent/apiClient.ts",
 ];
 const allowedHosts = new Set([
   "api.xn--fhq9f80kj05g.com",

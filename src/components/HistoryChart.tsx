@@ -5,6 +5,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceArea,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,6 +18,7 @@ interface HistoryChartProps {
   points: PowerPoint[];
   selectedSiteIds: Set<SiteId>;
   focusedSiteId: SiteId;
+  highlightedRange?: { start: string; end: string } | null;
 }
 
 interface ChartRow {
@@ -49,6 +51,7 @@ export function HistoryChart({
   points,
   selectedSiteIds,
   focusedSiteId,
+  highlightedRange,
 }: HistoryChartProps) {
   const data = useMemo(() => {
     const rows = new Map<string, ChartRow>();
@@ -111,6 +114,17 @@ export function HistoryChart({
           <Legend
             formatter={(value) => sites.find((site) => String(site.id) === value)?.name ?? value}
           />
+          {highlightedRange && (
+            <ReferenceArea
+              x1={axisTime.format(new Date(highlightedRange.start))}
+              x2={axisTime.format(new Date(highlightedRange.end))}
+              fill="#c45738"
+              fillOpacity={0.16}
+              stroke="#c45738"
+              strokeOpacity={0.8}
+              label={{ value: "Agent 候选区间", fill: "#742e1f", fontSize: 10 }}
+            />
+          )}
           {sites.filter((site) => selectedSiteIds.has(site.id)).map((site) => (
             <Line
               key={site.id}
