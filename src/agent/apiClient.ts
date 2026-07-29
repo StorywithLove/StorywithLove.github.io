@@ -29,7 +29,7 @@ export async function askRemoteAgent(
 ): Promise<AgentResponse> {
   if (!agentApiConfigured()) throw new Error("Agent API is not configured");
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 30_000);
+  const timeout = window.setTimeout(() => controller.abort(), 55_000);
   try {
     const response = await fetch(`${AGENT_API_ENDPOINT}/query`, {
       method: "POST",

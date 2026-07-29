@@ -59,8 +59,10 @@ OCI 历史请求失败时，适配层将同一日期范围切换到 Solar Centre
 ## `POST /agent/query`
 
 Agent 接口接收最长 500 字符的问题，以及当前站点、日期范围、时区、指标和所选
-站点列表。服务端重新查询只读归档，执行确定性质量、摘要、异常或站点对比分析，
-再由服务端 DeepSeek Provider 解释紧凑分析结果。
+站点列表。服务端把问题解析为受约束的站点、逻辑时间范围、指标和分组，通过
+`query_power` 分片读取只读归档，再由 `analyze_power` 执行积分、峰值、平均值、
+容量因子、完整率、缺失、负值和爬坡等确定性计算。DeepSeek Provider 只解释紧凑
+分析结果。
 
 请求路径：
 
@@ -68,7 +70,9 @@ Agent 接口接收最长 500 字符的问题，以及当前站点、日期范围
 POST https://api.xn--fhq9f80kj05g.com/api/v1/agent/query
 ```
 
-时间范围最多 30 天；站点 ID 必须属于公开的五个 Yulara 站点。响应保留
+页面上下文最多30天；自然语言问题可以在服务端配置的总范围和点数上限内请求更长
+区间，例如最近60天。单次历史读取仍不超过31天，由 `query_power` 自动拆分、有限
+并发、重试、合并、排序和去重。站点 ID 必须属于公开的五个 Yulara 站点。响应保留
 `summary`、`evidence`、`findings`、`inferences`、`unknowns` 和 `actions`
 结构。模型失败时返回确定性分析，不伪造模型结果。DeepSeek Key 和数据库凭据只
 存在于 OCI 服务端。

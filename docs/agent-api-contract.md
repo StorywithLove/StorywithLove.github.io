@@ -1,7 +1,8 @@
 # 光伏数据 Agent API 契约
 
 当前仓库是 GitHub Pages 静态前端，不包含模型凭据或数据库身份。页面内置的
-确定性分析可以独立运行；自然语言模型解释通过部署在 OCI 的 HTTPS API 完成。
+确定性快捷分析可以独立运行；自由问题的查询规划、历史数据读取、确定性计算和
+自然语言解释通过部署在 OCI 的 HTTPS API 完成。
 
 ## 前端调用
 
@@ -39,8 +40,9 @@ Accept: application/json
 ```
 
 `message` 最长 500 个字符。前端不发送数据库连接信息、模型密钥、任意 SQL、
-Shell 命令或服务器路径。服务端应根据站点和时间范围重新查询可信数据，不应信任
-浏览器提交的计算结果。
+Shell 命令或服务器路径。服务端应根据问题与页面上下文生成受约束的站点、时间、
+指标和分组计划，重新查询可信数据，不应信任浏览器提交的计算结果。“最近60天”
+等逻辑区间可超过页面范围，由服务端通用查询工具自动分片。
 
 ## 结构化响应
 
@@ -106,24 +108,21 @@ AgentService
 只存在于 OCI 服务端，浏览器只知道公开 Agent API 地址。模型只解释服务端白名单
 工具产生的紧凑结构化结果，不接收数据库身份，也不能获得任意代码执行能力。
 
-建议首版白名单：
+当前顶层工具白名单：
 
-- `get_power_history`
-- `get_daily_summary`
-- `calculate_energy`
-- `calculate_peak_metrics`
-- `check_data_quality`
-- `detect_power_anomalies`
-- `compare_sites`
-- `get_weather_context`
-- `get_forecast_results`
-- `evaluate_forecast`
+- `query_power(site_ids, start, end, resolution="5m")`
+- `analyze_power(data, metrics, group_by)`
+
+`calculate_energy`、`calculate_peak_metrics` 和 `check_data_quality` 是
+`analyze_power` 的内部确定性实现，不需要分别暴露为顶层 Agent 工具。长时间查询
+由 `query_power` 完成分片、有限并发、重试、合并、排序和去重。
 
 ## 安全要求
 
 - Provider 凭据、数据库凭据和 OCI 私密配置仅存服务端环境变量。
 - 对请求体、站点 ID、时间范围和工具参数做模式校验；不接受任意 SQL。
-- 限制 30 天查询范围、请求频率、工具调用次数和模型上下文大小。
+- 页面上下文限制30天；Agent逻辑查询使用独立的最大天数、最大点数、分片并发、
+  重试、请求频率和模型上下文限制。
 - 设置上游数据与模型超时；模型失败时可退回确定性工具结果。
 - CORS 仅允许正式站点和明确的本地开发 Origin。
 - 日志记录工具名、耗时和脱敏错误，不记录模型密钥或完整原始数据。

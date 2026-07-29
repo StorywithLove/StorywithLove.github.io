@@ -51,7 +51,7 @@ const quickActions = [
 const welcome: ConversationMessage = {
   id: "welcome",
   role: "agent",
-  text: "我只分析页面已加载的真实数据。先选择一个快捷分析，或直接提出问题。",
+  text: "快捷分析使用页面真实数据；自由提问会由受控服务查询所需历史区间并完成确定性计算。",
 };
 
 function StructuredAnswer({

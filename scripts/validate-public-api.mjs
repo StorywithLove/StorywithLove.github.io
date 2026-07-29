@@ -61,6 +61,33 @@ for (const [name, path, validate] of checks) {
   console.log(`${name}: HTTP ${response.status}, contract OK, ${milliseconds} ms`);
 }
 
+const pagedQuery = new URLSearchParams({
+  site_ids: "5,8",
+  start: `${yesterday}T00:00:00+09:30`,
+  end: `${today}T00:00:00+09:30`,
+  resolution: "5m",
+  fields: "power_kw",
+  limit: "2",
+});
+const firstPageResponse = await request(`/power/history?${pagedQuery}`);
+assert(firstPageResponse.response.ok, "paged history first request failed");
+const firstPage = await firstPageResponse.response.json();
+assert(firstPage.observations?.length === 2, "paged history did not honor limit");
+assert(firstPage.has_more === true, "paged history did not report continuation");
+assert(typeof firstPage.next_cursor === "string", "paged history omitted cursor");
+pagedQuery.set("cursor", firstPage.next_cursor);
+const secondPageResponse = await request(`/power/history?${pagedQuery}`);
+assert(secondPageResponse.response.ok, "paged history continuation failed");
+const secondPage = await secondPageResponse.response.json();
+const firstLast = firstPage.observations.at(-1);
+const secondFirst = secondPage.observations.at(0);
+assert(
+  `${firstLast.observed_at}:${firstLast.site_id}` !==
+    `${secondFirst.observed_at}:${secondFirst.site_id}`,
+  "paged history repeated the cursor row",
+);
+console.log("power/history pagination: generic parameters and cursor contract OK");
+
 const cors = await request("/power/latest", { headers: { Origin: productionOrigin } });
 assert(
   cors.response.headers.get("access-control-allow-origin") === productionOrigin,
