@@ -48,6 +48,11 @@ GET /power/history?start=2026-07-01T00%3A00%3A00%2B09%3A30&end=2026-07-02T00%3A0
 
 页面日期选择会被转换成 Darwin 当地零点，结束日期自动加一天并作为不包含端。前端使用 `observations` 中的 `observed_at`、`site_id` 和 `power_kw`。页面单次范围限制为 30 天，低于 API 的 31 天上限。
 
+通用历史接口同时支持逗号分隔的 `site_ids`、当前白名单
+`resolution=5m`、`fields=power_kw`，以及可选的 `limit` 和不透明
+`cursor`。不传 `limit` 时保持原有完整区间响应；Agent 长区间查询在服务端使用
+同一历史数据访问层自动分片，不新增按问题命名的业务端点。
+
 OCI 历史请求失败时，适配层将同一日期范围切换到 Solar Centre，并按最多三天分段、有限并发、排序和去重。
 
 ## `GET /status`
