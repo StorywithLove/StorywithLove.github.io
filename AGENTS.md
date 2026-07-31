@@ -14,35 +14,54 @@
   `/data/pv-forecast/releases`, `current`, `shared`, deployment locks, history,
   virtual environments, and runtime secrets are server state and must not be
   committed or synchronized to GitHub.
-- GitHub commits are the source baseline. A local checkout is a disposable
-  working copy, not an independent baseline or backup.
+- GitHub commits are the source baseline. Cloud and local checkouts are working
+  copies, not independent baselines.
 
-## Persistent local workspace
+## Default and fallback execution environments
 
-- This repository root is the only persistent local project checkout and is the
-  normal Codex entrypoint.
+- Default to a repository-first Codex Cloud workflow. Select the relevant
+  repository and an up-to-date `main` commit, let Codex create an ephemeral
+  cloud checkout, and perform the scoped changes and checks there.
+- A cloud checkout is disposable. Publish its work through a task branch and
+  pull request; never treat unpushed cloud state as a source baseline.
+- If Codex Cloud is unavailable, unsuitable for a required local integration,
+  or cannot reproduce the project environment, use the local fallback workflow:
+  update a safe working copy, create the same task branch, make and test the
+  change locally, then push it through the same pull-request and CI gates.
+- The execution environment may change, but branch naming, tests, review, CI,
+  merge, deployment, and verification requirements do not.
+
+## Persistent frontend mirror and local fallback
+
+- This frontend repository root is the only persistent local project checkout.
+  It is the normal VS Code/Codex local entrypoint and a synchronized mirror of
+  the frontend GitHub repository, not the source baseline.
 - If it is absent, clone the frontend repository into the intended workspace
   path and use that clone as the task entrypoint.
-- If it exists, do not clone over it. Before work, inspect `git status`, preserve
-  user changes, run `git fetch --prune origin`, and update a clean local `main`
-  with `git pull --ff-only origin main`.
+- If the local fallback is needed, do not clone over this checkout. Inspect
+  `git status`, preserve user changes, run `git fetch --prune origin`, and update
+  a clean local `main` with `git pull --ff-only origin main` before branching.
 - If the checkout is dirty or has diverged, do not overwrite, reset, or silently
   merge it. Reconcile the existing work first or ask the user.
-- Backend work should use a temporary clone of the private backend repository.
-  Do not create a second persistent backend baseline. Remove only the temporary
-  checkout created for the task after its branch is safely pushed and merged.
+- Codex Cloud backend work does not require a local backend checkout. If the
+  local fallback is needed, create a temporary clone of the private backend
+  repository, use it only for that task, and do not create a persistent backend
+  baseline. Remove only the temporary checkout created for the task after its
+  branch is safely pushed and merged.
 
 ## Change workflow
 
-1. Start from an up-to-date `main`.
-2. Create a task branch named `agent/<short-description>`. Do not develop or
+1. Use Codex Cloud by default. Fall back to a safe local checkout when cloud
+   execution is unavailable or unsuitable.
+2. Start from an up-to-date `main` commit in the selected environment.
+3. Create a task branch named `agent/<short-description>`. Do not develop or
    commit directly on `main`.
-3. Make only task-scoped changes and keep frontend and backend changes in their
+4. Make only task-scoped changes and keep frontend and backend changes in their
    respective repositories and pull requests.
-4. Run the relevant local checks before publishing.
-5. Push the task branch and open a pull request targeting `main`.
-6. Merge only after the repository CI checks pass.
-7. Treat the merged GitHub commit as the new source baseline.
+5. Run the relevant checks in the cloud or local working copy before publishing.
+6. Push the task branch and open a pull request targeting `main`.
+7. Review the diff and merge only after the repository CI checks pass.
+8. Treat the merged GitHub commit as the new source baseline.
 
 Frontend checks:
 
@@ -85,9 +104,12 @@ Follow any more specific `AGENTS.md` inside the backend repository.
 
 ## End-of-task synchronization
 
-- After the frontend pull request is merged, switch the persistent checkout back
-  to `main`, run `git fetch --prune origin`, then
-  `git pull --ff-only origin main`.
+- After a frontend `main` deployment reaches a terminal result, synchronize the
+  persistent frontend mirror: switch it back to `main`, run
+  `git fetch --prune origin`, then `git pull --ff-only origin main`.
+- If the Pages deployment failed, keep the local mirror synchronized with the
+  GitHub source baseline but report clearly that production did not advance to
+  that commit.
 - Confirm the persistent checkout is clean and matches `origin/main`.
 - A pushed branch or unmerged pull request is not final synchronization; report
   it explicitly as pending.
