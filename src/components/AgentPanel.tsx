@@ -13,15 +13,13 @@ import {
   X,
 } from "lucide-react";
 import {
-  checkDataQuality,
+  AgentRangeError,
   compareSites,
-  detectPowerAnomalies,
+  executeAgentRequest,
   forecastUnavailable,
-  getDailySummary,
   getWeatherContext,
-  runLocalAgent,
 } from "../agent/analysis";
-import { agentApiConfigured, askRemoteAgent } from "../agent/apiClient";
+import { fetchPowerRange } from "../services/dataAdapter";
 import type {
   AgentAction,
   AgentContext,
@@ -41,17 +39,16 @@ interface ConversationMessage {
 }
 
 const quickActions = [
-  { label: "总结当前数据", icon: ChartNoAxesCombined, run: getDailySummary },
-  { label: "检查数据质量", icon: DatabaseZap, run: checkDataQuality },
-  { label: "分析异常功率", icon: CircleAlert, run: detectPowerAnomalies },
-  { label: "对比站点表现", icon: BarChart3, run: compareSites },
-  { label: "分析天气影响", icon: SunMedium, run: getWeatherContext },
+  { label: "过去 7 天发了多少电？", message: "过去 7 天发了多少电？", icon: SunMedium },
+  { label: "总结最近一天", message: "总结最近一天的发电情况", icon: ChartNoAxesCombined },
+  { label: "检查异常", message: "检查最近一天是否有异常", icon: CircleAlert },
+  { label: "检查数据质量", message: "检查最近一天的数据质量", icon: DatabaseZap },
 ] as const;
 
 const welcome: ConversationMessage = {
   id: "welcome",
   role: "agent",
-  text: "快捷分析使用页面真实数据；自由提问会由受控服务查询所需历史区间并完成确定性计算。",
+  text: "我只分析当前选中的站点。可以查询 1—30 天的累计发电量、发电概览、简单异常候选和数据质量。",
 };
 
 function StructuredAnswer({
@@ -131,7 +128,8 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading, open]);
 
-  const appendAnalysis = (label: string, response: AgentResponse) => {
+  const appendAuxiliary = (label: string, response: AgentResponse) => {
+    if (loading) return;
     setMessages((current) => [
       ...current,
       { id: crypto.randomUUID(), role: "user", text: label },
@@ -139,15 +137,8 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
     ]);
   };
 
-  const runQuickAction = (
-    label: string,
-    run: (value: AgentContext) => AgentResponse,
-  ) => {
-    appendAnalysis(label, run(context));
-  };
-
-  const sendMessage = async () => {
-    const message = input.trim().slice(0, 500);
+  const sendMessage = async (rawMessage = input) => {
+    const message = rawMessage.trim().slice(0, 500);
     if (!message || loading) return;
     setInput("");
     setLoading(true);
@@ -156,20 +147,20 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
       { id: crypto.randomUUID(), role: "user", text: message },
     ]);
     try {
-      const response = agentApiConfigured()
-        ? await askRemoteAgent(message, context)
-        : runLocalAgent(message, context);
+      const response = await executeAgentRequest(message, context, fetchPowerRange);
       setMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: "agent", response },
       ]);
-    } catch {
+    } catch (error) {
       setMessages((current) => [
         ...current,
         {
           id: crypto.randomUUID(),
           role: "agent",
-          text: "分析服务暂时不可用。原页面的数据、图表和下载功能不受影响，请稍后重试。",
+          text: error instanceof AgentRangeError
+            ? error.message
+            : "历史数据暂时无法读取，分析未完成。原页面的数据、图表和下载功能不受影响，请稍后重试。",
         },
       ]);
     } finally {
@@ -218,25 +209,32 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
         <div className="agent-context">
           <span>当前上下文</span>
           <strong>{context.site_name}</strong>
-          <small>{context.start_time} — {context.end_time} · ACST</small>
-          <small>历史功率 · {context.selected_site_ids.length} 个站点 · {context.data_source}</small>
+          <small>默认范围：累计发电量 7 天 · 其余分析 1 天</small>
+          <small>单站点历史功率 · Australia/Darwin · {context.data_source}</small>
         </div>
 
         <div className="agent-quick-actions" aria-label="快捷分析">
-          {quickActions.map(({ label, icon: Icon, run }) => (
-            <button type="button" key={label} onClick={() => runQuickAction(label, run)}>
+          {quickActions.map(({ label, message, icon: Icon }) => (
+            <button type="button" key={label} disabled={loading} onClick={() => void sendMessage(message)}>
               <Icon size={15} />{label}
             </button>
           ))}
-          <button
-            type="button"
-            className="is-disabled"
-            onClick={() => appendAnalysis("评估预测表现", forecastUnavailable())}
-            title="预测结果尚未接入"
-          >
-            <ChartNoAxesCombined size={15} />评估预测表现<small>未接入</small>
-          </button>
         </div>
+
+        <details className="agent-auxiliary-actions">
+          <summary>保留的辅助功能</summary>
+          <div>
+            <button type="button" disabled={loading} onClick={() => appendAuxiliary("对比页面所选站点", compareSites(context))}>
+              <BarChart3 size={14} />站点对比
+            </button>
+            <button type="button" disabled={loading} onClick={() => appendAuxiliary("查看附近天气", getWeatherContext(context))}>
+              <SunMedium size={14} />天气快照
+            </button>
+            <button type="button" disabled={loading} onClick={() => appendAuxiliary("评估预测表现", forecastUnavailable())}>
+              <ChartNoAxesCombined size={14} />预测占位
+            </button>
+          </div>
+        </details>
 
         <div className="agent-messages" ref={listRef} aria-live="polite">
           {messages.map((message) => (
@@ -247,7 +245,7 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
           ))}
           {loading && (
             <div className="agent-message is-agent agent-loading" role="status">
-              <span /><span /><span /> 正在调用受控分析服务…
+              <span /><span /><span /> 正在读取真实历史数据并计算…
             </div>
           )}
         </div>
@@ -265,7 +263,7 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
             value={input}
             maxLength={500}
             rows={2}
-            placeholder={agentApiConfigured() ? "例如：为什么最近出现功率下降？" : "可询问质量、异常、站点对比或天气"}
+            placeholder="例如：最近 14 天累计发电量是多少？"
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -275,7 +273,7 @@ export function AgentPanel({ context, onAction }: AgentPanelProps) {
             }}
           />
           <div>
-            <small>{agentApiConfigured() ? "服务端 Agent 已配置" : "确定性本地分析 · 未配置模型服务"} · {input.length}/500</small>
+            <small>确定性单站点分析 · 1—30 天 · {input.length}/500</small>
             <button type="submit" disabled={!input.trim() || loading} aria-label="发送问题">
               <Send size={16} />
             </button>

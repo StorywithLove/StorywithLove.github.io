@@ -45,9 +45,9 @@ test("production build includes the controlled photovoltaic agent", async () => 
     )
   ).join("\n");
   assert.match(bundle, /光伏数据分析助手/);
-  assert.match(bundle, /确定性本地分析/);
+  assert.match(bundle, /确定性单站点分析/);
+  assert.match(bundle, /calculate_energy_summary/);
   assert.match(bundle, /check_data_quality/);
-  assert.match(bundle, /预测结果尚未接入/);
-  assert.match(bundle, /api\.xn--fhq9f80kj05g\.com\/api\/v1\/agent/);
+  assert.match(bundle, /预测、故障诊断、多站点比较和复杂归因功能尚未接入/);
   assert.doesNotMatch(bundle, /sk-[A-Za-z0-9_-]{20,}|BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY/);
 });
