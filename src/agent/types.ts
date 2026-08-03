@@ -6,13 +6,29 @@ import type {
 } from "../types";
 
 export type AgentTool =
-  | "daily_summary"
+  | "energy_summary"
+  | "site_summary"
+  | "simple_anomalies"
   | "data_quality"
+  | "unsupported"
+  | "daily_summary"
   | "power_anomalies"
   | "site_comparison"
   | "weather_context"
   | "forecast_evaluation"
   | "remote_agent";
+
+export type AgentIntent =
+  | "energy_summary"
+  | "site_summary"
+  | "anomaly_check"
+  | "data_quality"
+  | "unsupported";
+
+export interface ParsedAgentRequest {
+  intent: AgentIntent;
+  days: number;
+}
 
 export interface AgentPageContext {
   site_id: number;
