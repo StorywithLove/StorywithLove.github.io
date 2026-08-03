@@ -686,11 +686,10 @@ export async function executeAgentRequest(
   const parsed = parseAgentRequest(message);
   if (parsed.intent === "unsupported") return unsupportedResponse();
   const { startDate, endDate } = calculateAgentDateRange(message, parsed, now);
-  const canReusePageData =
-    context.start_time === startDate &&
-    context.end_time === endDate &&
-    context.points.some((point) => point.siteId === context.site_id);
-  const history = canReusePageData ? { points: context.points } : await loadHistory(startDate, endDate);
+  // The page can temporarily label a latest-only snapshot with today's date.
+  // Always load the requested history range so a single realtime point is not
+  // mistaken for complete range coverage and reported as a day-long data gap.
+  const history = await loadHistory(startDate, endDate);
   return responseForIntent(
     parsed.intent,
     inputFromContext(context, startDate, endDate, history.points, now),

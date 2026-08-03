@@ -235,6 +235,35 @@ test("follows the current site and does not fetch history for unsupported questi
   assert.equal(calls, 1);
 });
 
+test("does not reuse a latest-only page snapshot as full history", async () => {
+  const current = context();
+  current.start_time = "2026-08-03";
+  current.end_time = "2026-08-03";
+  current.points = [point("2026-08-03T02:30:00.000Z", 24)];
+  let calls = 0;
+  const start = Date.parse("2026-08-02T14:30:00.000Z");
+  const loader = async () => {
+    calls += 1;
+    return {
+      points: Array.from({ length: 145 }, (_, index) =>
+        point(new Date(start + index * 300_000).toISOString(), 10 + index * 0.1),
+      ),
+    };
+  };
+
+  const response = await analysis.executeAgentRequest(
+    "检查最近一天是否有异常",
+    current,
+    loader,
+    NOW,
+  );
+
+  assert.equal(calls, 1);
+  assert.equal(response.tool, "simple_anomalies");
+  assert.match(response.summary, /未检测到/);
+  assert.equal(response.evidence.find((item) => item.label === "异常候选")?.value, "0");
+});
+
 test("the panel exposes exactly the four primary shortcuts and a safe API error message", async () => {
   const source = await readFile(new URL("../src/components/AgentPanel.tsx", import.meta.url), "utf8");
   assert.match(source, /过去 7 天发了多少电？/);
