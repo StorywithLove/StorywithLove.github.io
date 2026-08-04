@@ -8,6 +8,7 @@ import {
   Database,
   Gauge,
   Github,
+  HeartHandshake,
   MapPinned,
   RefreshCw,
   Satellite,
@@ -43,6 +44,7 @@ const ARENA_CURTAILMENT_REPORT_URL =
   "https://www.arena.gov.au/assets/2018/12/the-power-of-far-flung-arrays-yularas-dispersed-design-to-reduce-system-variability.pdf";
 const DESERT_GARDENS_SOURCE_URL =
   "https://dkasolarcentre.com.au/source/yulara/yulara-1-fixed";
+const PAYPAL_SUPPORT_URL = "https://www.paypal.com/paypalme/storywithlove";
 const AgentPanel = lazy(() =>
   import("./components/AgentPanel").then((module) => ({ default: module.AgentPanel })),
 );
@@ -410,6 +412,7 @@ function App() {
           <a href="#map">站点地图</a>
           <a href="#history">历史回看</a>
           <a href="#sources">数据方法</a>
+          <a href="#support">支持项目</a>
           <a href="#roadmap">路线图</a>
         </nav>
       </header>
@@ -661,9 +664,40 @@ function App() {
           </div>
         </section>
 
+        <section className="section support-section" id="support" aria-labelledby="support-title">
+          <div className="support-copy">
+            <p className="eyebrow">05 / SUPPORT THE WORK</p>
+            <h2 id="support-title">支持这个开放的能源数据项目</h2>
+            <p>
+              Red Earth Lab 持续整理真实能源数据、可复现分析与 AI Agent 实验。
+              你可以通过 PayPal 提供数字项目支持，用于网站维护、数据归档和后续公开实验。
+            </p>
+            <ul>
+              <li>数字项目支持，无实物商品或物流配送</li>
+              <li>支持金额可在 PayPal 页面自行填写</li>
+              <li>付款与账户信息由 PayPal 安全处理，本站不采集银行卡资料</li>
+            </ul>
+          </div>
+          <aside className="support-card" aria-label="PayPal 项目支持入口">
+            <HeartHandshake size={28} aria-hidden="true" />
+            <p>DIGITAL PROJECT SUPPORT</p>
+            <h3>通过 PayPal 支持</h3>
+            <p>打开 StorywithLove 的 PayPal.Me 页面，确认收款方与金额后完成付款。</p>
+            <a
+              className="button support-button"
+              href={PAYPAL_SUPPORT_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              前往 PayPal 安全支付 <ArrowUpRight size={16} />
+            </a>
+            <small>收款页面：paypal.com/paypalme/storywithlove</small>
+          </aside>
+        </section>
+
         <section className="section roadmap-section" id="roadmap" aria-labelledby="roadmap-title">
           <div className="section-heading">
-            <div><p className="eyebrow">05 / PROJECT LIBRARY</p><h2 id="roadmap-title">从一座电站，走向一组可复用的能源数据系统</h2></div>
+            <div><p className="eyebrow">06 / PROJECT LIBRARY</p><h2 id="roadmap-title">从一座电站，走向一组可复用的能源数据系统</h2></div>
             <a className="button button-ghost" href="https://github.com/StorywithLove/storywithlove.github.io" target="_blank" rel="noreferrer"><Github size={16} /> 查看公开网站代码</a>
           </div>
           <div className="roadmap-grid">
