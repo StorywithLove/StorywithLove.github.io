@@ -31,6 +31,8 @@ test("production bundle contains the OCI primary and Solar Centre fallback", asy
   assert.match(bundle, /理论可用功率/);
   assert.match(bundle, /the-power-of-far-flung-arrays-yularas-dispersed-design-to-reduce-system-variability\.pdf/);
   assert.match(bundle, /dkasolarcentre\.com\.au\/source\/yulara\/yulara-1-fixed/);
+  assert.match(bundle, /paypal\.com\/paypalme\/storywithlove/);
+  assert.match(bundle, /通过 PayPal 支持/);
 });
 
 test("production build includes the controlled photovoltaic agent", async () => {
